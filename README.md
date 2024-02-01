@@ -1,96 +1,42 @@
-# Obsidian Sample Plugin
+# Obsidian Autogen Plugin
+The Autogen plugin allows you to create in-place generations within notes, using OpenAI's models.
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+# Settings
+Define your API key in the plugin settings, as well as the model to use for text generation. The `gpt-3.5-turbo` plugin is the default, due to it's low cost and very fast completions. However for more accuracy at slightly slower inference speed I'd recommend GPT-4. 32k variants of each model are also available, and allow for much larger token sizes. To learn more about tokens and specifics I'd recommend reading [OpenAI's forum](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them) on the subject. You can also change the `Trigger Regex`, which will decide what text should be looked for and matched as a selection to be replaced.
 
-This project uses Typescript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in Typescript Definition format, which contains TSDoc comments describing what it does.
+You can also modify the `Window Size`, which is different but correlated with the token limit of the selected model. The `Window Size` setting defines how many characters, not including the trigger prompt (this: @[prompt is here]), should be sent to the model. This likely won't matter for most notes, however for longer notes it's important to make sure that too many tokens aren't being sent, as this may cause errors. This setting defaults to 8k which will send _about_ 2k tokens per generation, from above and below the text. This should be enough for basic context to be sent to the model, but can be increased to about 16k on the smaller models and about 128k on the larger ones.
 
-**Note:** The Obsidian API is still in early alpha and is subject to change at any time!
+> ![warning]
+> The number of tokens sent to the server will influence the price that you will pay for API usage.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open Sample Modal" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and output 'click' to the console.
-- Registers a global interval which logs 'setInterval' to the console.
+If you don't understand what these things mean, or you want to keep things simple, I'd recommend **sticking to the defaults**.
 
-## First time developing plugins?
 
-Quick starting guide for new plugin devs:
+# Usage
+When you're working in a note, you can use the following syntax (@[prompt]) to trigger a generation:
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `main.ts` to `main.js`.
-- Make changes to `main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+```markdown
+There are many classes that can be taken at Lorem Ipsum University, for example:
 
-## Releasing new releases
-
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
-
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
-
-## Adding your plugin to the community plugin list
-
-- Check https://github.com/obsidianmd/obsidian-releases/blob/master/plugin-review.md
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
-
-## How to use
-
-- Clone this repo.
-- Make sure your NodeJS is at least v16 (`node --version`).
-- `npm i` or `yarn` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
-
-## Manually installing the plugin
-
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
-
-## Improve code quality with eslint (optional)
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code. 
-- To use eslint with this project, make sure to install eslint from terminal:
-  - `npm install -g eslint`
-- To use eslint to analyze this project use this command:
-  - `eslint main.ts`
-  - eslint will then create a report with suggestions for code improvement by file and line number.
-- If your source code is in a folder, such as `src`, you can use eslint with this command to analyze all files in that folder:
-  - `eslint .\src\`
-
-## Funding URL
-
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-    "fundingUrl": "https://buymeacoffee.com"
-}
+@[a table with 3 columns: id, name, description and 3 rows with dummy entries for a list of classes one could take]
 ```
 
-If you have multiple URLs, you can also do:
+Then, whatever is in this selection, as well as a window of context from your note (capped at 8000 characters by default to limit token usage), will be sent to the language model of choice after a typing delay. The subsequent generation will replace your content, for example the above would be replaced by:
 
-```json
-{
-    "fundingUrl": {
-        "Buy Me a Coffee": "https://buymeacoffee.com",
-        "GitHub Sponsor": "https://github.com/sponsors",
-        "Patreon": "https://www.patreon.com/"
-    }
-}
+```markdown
+There are many classes that can be taken at Lorem Ipsum University, for example:
+
+| ID | Class Name | Class Description |
+| ---- | ---- | ---- |
+| 1 | Mathematics | This course covers foundational aspects of math |
+| 2 | English Literature | Learn in-depth analysis of English literary works |
+| 3 | Computer Science | Basic principles of computing and programming languages covered |
 ```
 
-## API Documentation
+The main thing that is happening here is that the @[prompt] syntax is being used to trigger a replacement.
 
-See https://github.com/obsidianmd/obsidian-api
+# Timeline
+Additional features may be added if requested, but the idea is to keep the functionality relatively simple.
+
+# Bugs, Questions, Etc.
+If you have any questions or notice any unexpected behavior feel free to open an issue and I will try to reponse ASAP.

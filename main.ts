@@ -14,11 +14,17 @@ import { getClient, getReplacement } from "utils/openai";
 interface AutogenSettings {
 	openaiApiKey: string;
 	model: ChatCompletionCreateParamsBase["model"];
+	triggerRegex: string;
+	windowSize: number;
+	typingDelay: number;
 }
 
 const DEFAULT_SETTINGS: AutogenSettings = {
 	openaiApiKey: "",
 	model: "gpt-3.5-turbo",
+	triggerRegex: "@\\[(.*?)\\]",
+	windowSize: 8000,
+	typingDelay: 2000,
 };
 
 export default class Autogen extends Plugin {
@@ -29,6 +35,7 @@ export default class Autogen extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.typingDelay = this.settings.typingDelay;
 
 		this.registerEvent(
 			this.app.workspace.on(
@@ -59,9 +66,9 @@ export default class Autogen extends Plugin {
 	}
 
 	async showConfirmationModal(editor: Editor) {
-		const pattern = /@\[(.*?)\]/g;
+		const pattern = new RegExp(this.settings.triggerRegex, "g");
 		const content = editor.getValue();
-		const windowSize = 5000;
+		const windowSize = this.settings.windowSize;
 
 		const match = pattern.exec(content);
 
@@ -78,10 +85,17 @@ export default class Autogen extends Plugin {
 				modal.contentEl.empty();
 				modal.titleEl.setText("Generating replacement...");
 
+				// put a little loading indicator in the contentEl
+				const loadingEl = createEl("p", {
+					text: "Loading...",
+				});
+				modal.contentEl.appendChild(loadingEl);
+
 				const replacement = await this.generateReplacementText(
 					textWindow,
 					match[0]
 				);
+				modal.contentEl.empty();
 				modal.titleEl.setText("Replace selection with:");
 				const textEl = createEl("p", {
 					text: replacement,
@@ -90,10 +104,14 @@ export default class Autogen extends Plugin {
 
 				modal.contentEl.createEl("br");
 
+				const buttonContainer = createEl("div");
+				buttonContainer.style.display = "flex";
+				buttonContainer.style.justifyContent = "flex-end";
+				buttonContainer.style.alignItems = "center";
+				buttonContainer.style.width = "100%";
+				buttonContainer.style.gap = "10px";
+
 				const confirmButton = createEl("button", { text: "Confirm" });
-				confirmButton.setCssStyles({
-					marginRight: "10px",
-				});
 				const cancelButton = createEl("button", { text: "Cancel" });
 
 				confirmButton.addEventListener("click", () => {
@@ -104,7 +122,10 @@ export default class Autogen extends Plugin {
 					modal.close();
 				});
 
-				modal.contentEl.appendChild(confirmButton);
+				buttonContainer.appendChild(cancelButton);
+				buttonContainer.appendChild(confirmButton);
+
+				modal.contentEl.appendChild(buttonContainer);
 			};
 
 			const modal = new AutogenConfirmationModal(
@@ -175,17 +196,23 @@ class AutogenConfirmationModal extends Modal {
 		const { contentEl, titleEl } = this;
 		titleEl.setText("Replace this selection?");
 
+		contentEl.style.whiteSpace = "pre-wrap";
+
 		const textEl = createEl("p", {
-			text: this.match.replace("@[", "").replace("]", ""),
+			text: `"${this.match.replace("@[", "").replace("]", "")}"`,
 		});
 		contentEl.appendChild(textEl);
 
 		contentEl.createEl("br");
 
+		const buttonContainer = createEl("div");
+		buttonContainer.style.display = "flex";
+		buttonContainer.style.justifyContent = "flex-end";
+		buttonContainer.style.alignItems = "center";
+		buttonContainer.style.width = "100%";
+		buttonContainer.style.gap = "10px";
+
 		const confirmButton = createEl("button", { text: "Yes" });
-		confirmButton.setCssStyles({
-			marginRight: "10px",
-		});
 		const cancelButton = createEl("button", { text: "No" });
 
 		confirmButton.addEventListener("click", async () => {
@@ -197,8 +224,10 @@ class AutogenConfirmationModal extends Modal {
 			this.close();
 		});
 
-		contentEl.appendChild(confirmButton);
-		contentEl.appendChild(cancelButton);
+		buttonContainer.appendChild(cancelButton);
+		buttonContainer.appendChild(confirmButton);
+
+		contentEl.appendChild(buttonContainer);
 	}
 
 	onClose() {
@@ -271,5 +300,48 @@ class AutogenSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
+
+		new Setting(containerEl)
+			.setName("Trigger Regex")
+			.setDesc("The regex pattern to trigger the autogen")
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter the regex pattern")
+					.setValue("@\\[(.*?)\\]")
+					.onChange(async (value) => {
+						this.plugin.settings.triggerRegex = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Window Size")
+			.setDesc(
+				"The max number of characters, not including the prompt, to be sent for the generation. This affects token usage and performance."
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter the window size")
+					.setValue(this.plugin.settings.windowSize.toString())
+					.onChange(async (value) => {
+						this.plugin.settings.windowSize = parseInt(value);
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Typing Delay")
+			.setDesc(
+				"The delay in milliseconds to wait after the user stops typing before generating the replacement"
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder("Enter the typing delay")
+					.setValue(this.plugin.settings.typingDelay.toString())
+					.onChange(async (value) => {
+						this.plugin.settings.typingDelay = parseInt(value);
+						await this.plugin.saveSettings();
+					})
+			);
 	}
 }
