@@ -15,25 +15,14 @@ If you don't understand what these things mean, or you want to keep things simpl
 # Usage
 When you're working in a note, you can use the following syntax (@[prompt]) to trigger a generation:
 
-```markdown
-There are many classes that can be taken at Lorem Ipsum University, for example:
+![autogen-demo-gif](https://github.com/AidanTilgner/AutogenObsidianPlugin/assets/45406132/e0547bdb-4f96-47e2-9f9d-45812346b77f)
 
-@[a table with 3 columns: id, name, description and 3 rows with dummy entries for a list of classes one could take]
-```
-
-Then, whatever is in this selection, as well as a window of context from your note (capped at 8000 characters by default to limit token usage), will be sent to the language model of choice after a typing delay. The subsequent generation will replace your content, for example the above would be replaced by:
-
-```markdown
-There are many classes that can be taken at Lorem Ipsum University, for example:
-
-| ID | Class Name | Class Description |
-| ---- | ---- | ---- |
-| 1 | Mathematics | This course covers foundational aspects of math |
-| 2 | English Literature | Learn in-depth analysis of English literary works |
-| 3 | Computer Science | Basic principles of computing and programming languages covered |
-```
-
-The main thing that is happening here is that the @[prompt] syntax is being used to trigger a replacement.
+The main thing that is happening here is that the @[prompt] syntax is being used to trigger a replacement. The replacement **can be markdown** and will show up accordingly. Therefore you can use this for:
+- Tables
+- Dummy text
+- Summary
+- Elaboration
+- Transformation of other text in the note
 
 # Timeline
 Additional features may be added if requested, but the idea is to keep the functionality relatively simple.
