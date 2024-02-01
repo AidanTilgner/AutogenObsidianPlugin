@@ -4,8 +4,8 @@
 	"version": "1.0.0",
 	"minAppVersion": "0.15.0",
 	"description": "In place autogeneration of content based on prompts.",
-	"author": "Obsidian",
+	"author": "Aidan Tilgner",
 	"authorUrl": "https://github.com/AidanTilgner",
 	"fundingUrl": "https://www.buymeacoffee.com/aidantilgner",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

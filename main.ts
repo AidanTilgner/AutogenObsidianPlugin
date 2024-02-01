@@ -11,8 +11,6 @@ import OpenAI from "openai";
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions";
 import { getClient, getReplacement } from "utils/openai";
 
-// Remember to rename these classes and interfaces!
-
 interface AutogenSettings {
 	openaiApiKey: string;
 	model: ChatCompletionCreateParamsBase["model"];
@@ -65,15 +63,9 @@ export default class Autogen extends Plugin {
 		const content = editor.getValue();
 		const windowSize = 5000;
 
-		console.log("Editor change: ", content);
-
-		// Execute pattern search once instead of looping
 		const match = pattern.exec(content);
 
 		if (match !== null) {
-			console.log("Found match:", match[0]);
-
-			// Calculate window around the match
 			const start = Math.max(match.index - windowSize / 2, 0);
 			const end = Math.min(
 				match.index + match[0].length + windowSize / 2,
@@ -81,7 +73,6 @@ export default class Autogen extends Plugin {
 			);
 
 			const textWindow = content.substring(start, end);
-			console.log("Text window: ", textWindow);
 
 			const onConfirm = async (modal: Modal) => {
 				modal.contentEl.empty();
@@ -150,7 +141,6 @@ export default class Autogen extends Plugin {
 	}
 
 	replaceText(editor: Editor, match: string, replacement: string) {
-		// replace the match with the replacement
 		const content = editor.getValue();
 		const newContent = content.replace(match, replacement);
 		editor.setValue(newContent);
