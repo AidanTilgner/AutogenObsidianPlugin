@@ -15,7 +15,8 @@ If you don't understand what these things mean, or you want to keep things simpl
 # Usage
 When you're working in a note, you can use the following syntax (@[prompt]) to trigger a generation:
 
-![autogen-demo-gif](https://github.com/AidanTilgner/AutogenObsidianPlugin/assets/45406132/e0547bdb-4f96-47e2-9f9d-45812346b77f)
+![autogen-plugin-demo](https://github.com/AidanTilgner/AutogenObsidianPlugin/assets/45406132/452c333b-d7bb-4b13-b9fa-233069b4e5f5)
+
 
 The main thing that is happening here is that the @[prompt] syntax is being used to trigger a replacement. The replacement **can be markdown** and will show up accordingly. Therefore you can use this for:
 - Tables
