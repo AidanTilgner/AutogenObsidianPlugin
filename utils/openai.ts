@@ -9,34 +9,25 @@ export const getClient = (apiKey: string) => {
 	});
 };
 
-export const getReplacement = async (
-	client: OpenAI,
-	model: ChatCompletionCreateParamsBase["model"],
-	textWindow: string,
-	match: string
-) => {
+export const getGeneration = async ({
+	client,
+	model,
+	systemPrompt,
+	textWindow,
+	match,
+}: {
+	client: OpenAI;
+	model: ChatCompletionCreateParamsBase["model"];
+	systemPrompt: string;
+	textWindow: string;
+	match: string;
+}) => {
 	try {
 		const response = await client.chat.completions.create({
 			model,
 			messages: [
 				{
-					content: `
-					Identity:
-					You are a helpful text replacer. Given a selection of text, you are tasked with generating a replacement for the selection.
-
-					# Context
-					The selection will be shown in the following format:
-					@[selection]
-
-					# Your Role
-					Its your job to generate what should go there in replacement, based on the user's prompt. Depending on the context, the replacement
-					may be a placeholder to be expanded on, or instructions for a more in-depth replacement. Generate the replacement which makes the most sense
-					based on a combination of the context and the selection itself.
-
-					# Things to remember:
-					- Markdown is preferred
-					- Keep in mind the context of the full text given, but only replace the selection itself
-						`,
+					content: systemPrompt,
 					role: "system",
 				},
 				{
@@ -56,7 +47,7 @@ export const getReplacement = async (
 					function: {
 						name: "replace_text",
 						description:
-							"Replace the selection based on its content",
+							"Provide the replacement text for the selection",
 						parameters: {
 							type: "object",
 							properties: {

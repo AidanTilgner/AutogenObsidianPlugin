@@ -1,22 +1,26 @@
 import {
 	App,
 	Editor,
-	MarkdownView,
 	Modal,
 	Plugin,
 	PluginSettingTab,
 	Setting,
+	EditorSuggest,
+	EditorPosition,
+	EditorSuggestTriggerInfo,
+	TFile,
+	EditorSuggestContext,
 } from "obsidian";
 import OpenAI from "openai";
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions";
-import { getClient, getReplacement } from "utils/openai";
+import { getClient, getGeneration } from "utils/openai";
 
 interface AutogenSettings {
 	openaiApiKey: string;
 	model: ChatCompletionCreateParamsBase["model"];
 	triggerRegex: string;
 	windowSize: number;
-	typingDelay: number;
+	systemPrompt: string;
 }
 
 const DEFAULT_SETTINGS: AutogenSettings = {
@@ -24,7 +28,18 @@ const DEFAULT_SETTINGS: AutogenSettings = {
 	model: "gpt-3.5-turbo",
 	triggerRegex: "@\\[(.*?)\\]",
 	windowSize: 8000,
-	typingDelay: 2000,
+	systemPrompt: `# Identity:
+You are a helpful content generator. Given a selection of text, you are tasked with generating a replacement for the selection.
+
+# Your Role
+Based on the context of the full text, and the selection itself, you are to generate a replacement for the given selection.
+The selection might take the form of an instruction, something to elaborate on, a transformation of some other part of the text, or some other prompt.
+The goal is to provide the best completion for the given selection, based on the context of the full text and the intent of the author.
+
+# Things to remember:
+- Markdown is supported
+- This is an Obsidian plugin, so you can use Obsidian-specific syntax
+	`,
 };
 
 export default class Autogen extends Plugin {
@@ -35,18 +50,13 @@ export default class Autogen extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
-		this.typingDelay = this.settings.typingDelay;
-
-		this.registerEvent(
-			this.app.workspace.on(
-				"editor-change",
-				this.handleEditorChange.bind(this)
-			)
-		);
 
 		this.addSettingTab(new AutogenSettingTab(this.app, this));
 
 		this.initOpenAIClient();
+
+		// add the suggester
+		this.registerEditorSuggest(new AutogenSuggest(this));
 	}
 
 	initOpenAIClient() {
@@ -55,23 +65,22 @@ export default class Autogen extends Plugin {
 		}
 	}
 
-	async handleEditorChange(editor: Editor, view: MarkdownView) {
-		if (this.typingTimeout !== null) {
-			clearTimeout(this.typingTimeout);
-		}
-		this.typingTimeout = setTimeout(
-			() => this.showConfirmationModal(editor),
-			this.typingDelay
-		);
+	matchRegex(editor: Editor) {
+		const cursor = editor.getCursor();
+		const content = editor.getLine(cursor.line);
+
+		const match = content.match(this.settings.triggerRegex);
+
+		return match;
 	}
 
-	async showConfirmationModal(editor: Editor) {
+	async triggerGeneration(editor: Editor) {
 		const pattern = new RegExp(this.settings.triggerRegex, "g");
 		const content = editor.getValue();
-		const windowSize = this.settings.windowSize;
 
 		const match = pattern.exec(content);
 
+		const windowSize = this.settings.windowSize;
 		if (match !== null) {
 			const start = Math.max(match.index - windowSize / 2, 0);
 			const end = Math.min(
@@ -81,58 +90,7 @@ export default class Autogen extends Plugin {
 
 			const textWindow = content.substring(start, end);
 
-			const onConfirm = async (modal: Modal) => {
-				modal.contentEl.empty();
-				modal.titleEl.setText("Generating replacement...");
-
-				// put a little loading indicator in the contentEl
-				const loadingEl = createEl("p", {
-					text: "Loading...",
-				});
-				modal.contentEl.appendChild(loadingEl);
-
-				const replacement = await this.generateReplacementText(
-					textWindow,
-					match[0]
-				);
-				modal.contentEl.empty();
-				modal.titleEl.setText("Replace selection with:");
-				const textEl = createEl("p", {
-					text: replacement,
-				});
-				modal.contentEl.appendChild(textEl);
-
-				modal.contentEl.createEl("br");
-
-				const buttonContainer = createEl("div");
-				buttonContainer.style.display = "flex";
-				buttonContainer.style.justifyContent = "flex-end";
-				buttonContainer.style.alignItems = "center";
-				buttonContainer.style.width = "100%";
-				buttonContainer.style.gap = "10px";
-
-				const confirmButton = createEl("button", { text: "Confirm" });
-				const cancelButton = createEl("button", { text: "Cancel" });
-
-				confirmButton.addEventListener("click", () => {
-					this.replaceText(editor, match[0], replacement);
-					modal.close();
-				});
-				cancelButton.addEventListener("click", () => {
-					modal.close();
-				});
-
-				buttonContainer.appendChild(cancelButton);
-				buttonContainer.appendChild(confirmButton);
-
-				modal.contentEl.appendChild(buttonContainer);
-			};
-
-			const modal = new AutogenConfirmationModal(
-				this.app,
-				match[0],
-				onConfirm
-			);
+			const modal = new AutogenModal(this, match[0], textWindow, editor);
 			modal.open();
 		}
 	}
@@ -143,12 +101,13 @@ export default class Autogen extends Plugin {
 		}
 
 		if (this.openaiClient !== null) {
-			const replacement = await getReplacement(
-				this.openaiClient,
-				this.settings.model,
-				window,
-				match
-			);
+			const replacement = await getGeneration({
+				client: this.openaiClient,
+				model: this.settings.model,
+				systemPrompt: this.settings.systemPrompt,
+				textWindow: window,
+				match,
+			});
 			if (replacement) {
 				return replacement;
 			} else {
@@ -182,44 +141,129 @@ export default class Autogen extends Plugin {
 	}
 }
 
-class AutogenConfirmationModal extends Modal {
-	public match = "";
-	public onConfirm: (modal: Modal) => void;
+interface Suggestion {
+	label: string;
+	id: string;
+}
 
-	constructor(app: App, match: string, onConfirm: (modal: Modal) => void) {
-		super(app);
-		this.match = match;
-		this.onConfirm = onConfirm;
+class AutogenSuggest extends EditorSuggest<Suggestion> {
+	private editor: Editor;
+
+	constructor(public plugin: Autogen) {
+		super(plugin.app);
+
+		this.setInstructions([
+			{
+				command: "Press Enter",
+				purpose: "to create generation",
+			},
+		]);
 	}
 
-	onOpen() {
+	onTrigger(
+		cursor: EditorPosition,
+		editor: Editor,
+		file: TFile | null
+	): EditorSuggestTriggerInfo | null {
+		if (this.plugin.matchRegex(editor) == null) {
+			return null;
+		}
+
+		this.editor = editor;
+
+		return {
+			start: cursor,
+			end: cursor,
+			query: "",
+		};
+	}
+
+	getSuggestions(
+		context: EditorSuggestContext
+	): Suggestion[] | Promise<Suggestion[]> {
+		return [
+			{
+				label: "Get Suggestions",
+				id: "getSuggestions",
+			},
+		];
+	}
+
+	selectSuggestion(value: Suggestion, evt: MouseEvent | KeyboardEvent): void {
+		switch (value.id) {
+			case "getSuggestions":
+				this.plugin.triggerGeneration(this.editor);
+				break;
+			default:
+				break;
+		}
+	}
+
+	renderSuggestion(value: Suggestion, el: HTMLElement): void {
+		el.setText(value.label);
+	}
+}
+
+class AutogenModal extends Modal {
+	public match = "";
+	public plugin: Autogen;
+	public textWindow = "";
+	public editor: Editor;
+
+	constructor(
+		plugin: Autogen,
+		match: string,
+		textWindow: string,
+		editor: Editor
+	) {
+		super(plugin.app);
+		this.match = match;
+		this.plugin = plugin;
+		this.textWindow = textWindow;
+		this.editor = editor;
+	}
+
+	async onOpen() {
 		const { contentEl, titleEl } = this;
-		titleEl.setText("Replace this selection?");
 
-		contentEl.style.whiteSpace = "pre-wrap";
+		contentEl.empty();
+		titleEl.setText("Generating replacement...");
 
+		const loadingEl = createEl("p", {
+			text: "Loading...",
+		});
+		contentEl.appendChild(loadingEl);
+
+		const replacement = await this.plugin.generateReplacementText(
+			this.textWindow,
+			this.match
+		);
+
+		contentEl.empty();
+		titleEl.setText("Replace selection with:");
 		const textEl = createEl("p", {
-			text: `"${this.match.replace("@[", "").replace("]", "")}"`,
+			text: replacement,
 		});
 		contentEl.appendChild(textEl);
 
 		contentEl.createEl("br");
 
 		const buttonContainer = createEl("div");
-		buttonContainer.style.display = "flex";
-		buttonContainer.style.justifyContent = "flex-end";
-		buttonContainer.style.alignItems = "center";
-		buttonContainer.style.width = "100%";
-		buttonContainer.style.gap = "10px";
-
-		const confirmButton = createEl("button", { text: "Yes" });
-		const cancelButton = createEl("button", { text: "No" });
-
-		confirmButton.addEventListener("click", async () => {
-			contentEl.empty();
-			this.onConfirm(this);
+		buttonContainer.setCssStyles({
+			display: "flex",
+			justifyContent: "flex-end",
+			alignItems: "center",
+			width: "100%",
+			gap: "10px",
 		});
 
+		const confirmButton = createEl("button", { text: "Confirm" });
+		const cancelButton = createEl("button", { text: "Cancel" });
+
+		confirmButton.addEventListener("click", () => {
+			this.plugin.replaceText(this.editor, this.match, replacement);
+			this.close();
+		});
 		cancelButton.addEventListener("click", () => {
 			this.close();
 		});
@@ -227,7 +271,9 @@ class AutogenConfirmationModal extends Modal {
 		buttonContainer.appendChild(cancelButton);
 		buttonContainer.appendChild(confirmButton);
 
-		contentEl.appendChild(buttonContainer);
+		this.contentEl.appendChild(buttonContainer);
+
+		confirmButton.focus();
 	}
 
 	onClose() {
@@ -249,11 +295,26 @@ class AutogenSettingTab extends PluginSettingTab {
 
 		containerEl.empty();
 
+		const apiKeyDesc = document.createDocumentFragment();
+
+		// Create a span element to hold the text
+		const span = document.createElement("span");
+		span.textContent = "Your OpenAI API Key (find or create one ";
+
+		// Create the anchor element for the link
+		const link = document.createElement("a");
+		link.href = "https://platform.openai.com/api-keys";
+		link.textContent = "here";
+		link.target = "_blank"; // Optional: Opens the link in a new tab
+
+		// Append the text and link to the DocumentFragment
+		apiKeyDesc.appendChild(span);
+		apiKeyDesc.appendChild(link);
+		apiKeyDesc.appendChild(document.createTextNode(")")); // To add the closing parenthesis
+
 		new Setting(containerEl)
 			.setName("OpenAI API Key")
-			.setDesc(
-				"Your OpenAI API Key (find or create one at https://platform.openai.com/api-keys)"
-			)
+			.setDesc(apiKeyDesc)
 			.addText((text) =>
 				text
 					.setPlaceholder("Enter your API Key")
@@ -330,18 +391,18 @@ class AutogenSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Typing Delay")
-			.setDesc(
-				"The delay in milliseconds to wait after the user stops typing before generating the replacement"
-			)
-			.addText((text) =>
-				text
-					.setPlaceholder("Enter the typing delay")
-					.setValue(this.plugin.settings.typingDelay.toString())
+			.setName("System Prompt")
+			.setDesc("The prompt to send to the OpenAI API")
+			.addTextArea((text) => {
+				text.setPlaceholder("Enter the system prompt")
+					.setValue(this.plugin.settings.systemPrompt)
 					.onChange(async (value) => {
-						this.plugin.settings.typingDelay = parseInt(value);
+						this.plugin.settings.systemPrompt = value;
 						await this.plugin.saveSettings();
-					})
-			);
+					});
+
+				text.inputEl.style.width = "100%";
+				text.inputEl.style.height = "200px";
+			});
 	}
 }
