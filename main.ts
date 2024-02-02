@@ -124,6 +124,19 @@ export default class Autogen extends Plugin {
 		const content = editor.getValue();
 		const newContent = content.replace(match, replacement);
 		editor.setValue(newContent);
+
+		// find the line number of the replacement string
+		const matchIndex = newContent.indexOf(replacement);
+		const lineNumber = newContent.substr(0, matchIndex).split("\n").length;
+
+		// find the character position of the replacement string
+		const line = editor.getLine(lineNumber);
+		const charPosition = line.indexOf(replacement);
+
+		editor.setCursor({
+			line: lineNumber,
+			ch: charPosition,
+		});
 	}
 
 	onunload() {}
