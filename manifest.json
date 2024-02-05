@@ -1,7 +1,7 @@
 {
 	"id": "autogen",
 	"name": "Autogen",
-	"version": "1.0.2",
+	"version": "1.0.3",
 	"minAppVersion": "0.15.0",
 	"description": "In place autogeneration of content based on prompts.",
 	"author": "Aidan Tilgner",

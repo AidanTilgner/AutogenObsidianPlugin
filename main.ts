@@ -262,13 +262,7 @@ class AutogenModal extends Modal {
 		contentEl.createEl("br");
 
 		const buttonContainer = createEl("div");
-		buttonContainer.setCssStyles({
-			display: "flex",
-			justifyContent: "flex-end",
-			alignItems: "center",
-			width: "100%",
-			gap: "10px",
-		});
+		buttonContainer.addClass("modal-button-container");
 
 		const confirmButton = createEl("button", { text: "Confirm" });
 		const cancelButton = createEl("button", { text: "Cancel" });
@@ -414,8 +408,7 @@ class AutogenSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 
-				text.inputEl.style.width = "100%";
-				text.inputEl.style.height = "200px";
+				text.inputEl.addClass("autogen-systemprompt-textarea");
 			});
 	}
 }
