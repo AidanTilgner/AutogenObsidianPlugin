@@ -2,7 +2,6 @@ import OpenAI from "openai";
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions";
 
 export const getClient = (apiKey: string) => {
-	console.log("Dangerously allowing browser");
 	return new OpenAI({
 		apiKey,
 		dangerouslyAllowBrowser: true,

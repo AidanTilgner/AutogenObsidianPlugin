@@ -44,8 +44,6 @@ The goal is to provide the best completion for the given selection, based on the
 
 export default class Autogen extends Plugin {
 	settings: AutogenSettings;
-	typingTimeout: NodeJS.Timeout | null = null;
-	typingDelay = 2000;
 	openaiClient: OpenAI | null = null;
 
 	async onload() {
@@ -196,7 +194,7 @@ class AutogenSuggest extends EditorSuggest<Suggestion> {
 	): Suggestion[] | Promise<Suggestion[]> {
 		return [
 			{
-				label: "Get Suggestions",
+				label: "Get suggestions",
 				id: "getSuggestions",
 			},
 		];
@@ -262,7 +260,7 @@ class AutogenModal extends Modal {
 		contentEl.createEl("br");
 
 		const buttonContainer = createEl("div");
-		buttonContainer.addClass("modal-button-container");
+		buttonContainer.addClass("autogen-modal-button-container");
 
 		const confirmButton = createEl("button", { text: "Confirm" });
 		const cancelButton = createEl("button", { text: "Cancel" });
@@ -320,7 +318,7 @@ class AutogenSettingTab extends PluginSettingTab {
 		apiKeyDesc.appendChild(document.createTextNode(")")); // To add the closing parenthesis
 
 		new Setting(containerEl)
-			.setName("OpenAI API Key")
+			.setName("OpenAI API key")
 			.setDesc(apiKeyDesc)
 			.addText((text) =>
 				text
@@ -370,7 +368,7 @@ class AutogenSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Trigger Regex")
+			.setName("Trigger regex")
 			.setDesc("The regex pattern to trigger the autogen")
 			.addText((text) =>
 				text
@@ -383,7 +381,7 @@ class AutogenSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Window Size")
+			.setName("Window size")
 			.setDesc(
 				"The max number of characters, not including the prompt, to be sent for the generation. This affects token usage and performance."
 			)
@@ -398,7 +396,7 @@ class AutogenSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("System Prompt")
+			.setName("System prompt")
 			.setDesc("The prompt to send to the OpenAI API")
 			.addTextArea((text) => {
 				text.setPlaceholder("Enter the system prompt")
