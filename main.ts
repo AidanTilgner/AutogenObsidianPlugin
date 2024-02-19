@@ -17,6 +17,7 @@ import { getClient, getGeneration } from "utils/openai";
 
 interface AutogenSettings {
 	openaiApiKey: string;
+	customURL?: string;
 	model: ChatCompletionCreateParamsBase["model"];
 	triggerRegex: string;
 	windowSize: number;
@@ -25,6 +26,7 @@ interface AutogenSettings {
 
 const DEFAULT_SETTINGS: AutogenSettings = {
 	openaiApiKey: "",
+	customURL,
 	model: "gpt-3.5-turbo",
 	triggerRegex: "@\\[(.*?)\\]",
 	windowSize: 8000,
@@ -59,7 +61,7 @@ export default class Autogen extends Plugin {
 
 	initOpenAIClient() {
 		if (this.settings.openaiApiKey) {
-			this.openaiClient = getClient(this.settings.openaiApiKey);
+			this.openaiClient = getClient(this.settings.openaiApiKey,);
 		}
 	}
 
@@ -326,6 +328,19 @@ class AutogenSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.openaiApiKey)
 					.onChange(async (value) => {
 						this.plugin.settings.openaiApiKey = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
+			.setName("Custom URL")
+			.setDesc("Custom URL (e.g. for proxy or local models with OpenAI-compatible API)")
+			.addText((text) =>
+				text
+					.setPlaceholder("Custom URL (leave blank for OpenAI default)")
+					.setValue(this.plugin.settings.customURL)
+					.onChange(async (value) => {
+						this.plugin.settings.customURL = value;
 						await this.plugin.saveSettings();
 					})
 			);
