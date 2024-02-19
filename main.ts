@@ -61,7 +61,11 @@ export default class Autogen extends Plugin {
 
 	initOpenAIClient() {
 		if (this.settings.openaiApiKey) {
-			this.openaiClient = getClient(this.settings.openaiApiKey,);
+			if (this.settings.customURL) {
+				this.openaiClient = getClient(this.settings.openaiApiKey, this.settings.customURL);
+			} else {
+				this.openaiClient = getClient(this.settings.openaiApiKey);
+			}
 		}
 	}
 
@@ -334,7 +338,7 @@ class AutogenSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Custom URL")
-			.setDesc("Custom URL (e.g. for proxy or local models with OpenAI-compatible API)")
+			.setDesc("Set a custom URL (e.g. for proxy or local models with OpenAI-compatible API)")
 			.addText((text) =>
 				text
 					.setPlaceholder("Custom URL (leave blank for OpenAI default)")
