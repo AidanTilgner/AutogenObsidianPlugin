@@ -4,8 +4,8 @@ import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completion
 export const getClient = (apiKey: string, customURL?: string) => {
 	return new OpenAI({
 		apiKey,
-		customURL,
 		dangerouslyAllowBrowser: true,
+		...(customURL ? { baseURL: customURL } : {}),
 	});
 };
 

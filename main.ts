@@ -17,7 +17,7 @@ import { getClient, getGeneration } from "utils/openai";
 
 interface AutogenSettings {
 	openaiApiKey: string;
-	customURL?: string;
+	customURL: string;
 	model: ChatCompletionCreateParamsBase["model"];
 	triggerRegex: string;
 	windowSize: number;
@@ -26,7 +26,7 @@ interface AutogenSettings {
 
 const DEFAULT_SETTINGS: AutogenSettings = {
 	openaiApiKey: "",
-	customURL,
+	customURL: "",
 	model: "gpt-3.5-turbo",
 	triggerRegex: "@\\[(.*?)\\]",
 	windowSize: 8000,
@@ -62,7 +62,10 @@ export default class Autogen extends Plugin {
 	initOpenAIClient() {
 		if (this.settings.openaiApiKey) {
 			if (this.settings.customURL) {
-				this.openaiClient = getClient(this.settings.openaiApiKey, this.settings.customURL);
+				this.openaiClient = getClient(
+					this.settings.openaiApiKey,
+					this.settings.customURL
+				);
 			} else {
 				this.openaiClient = getClient(this.settings.openaiApiKey);
 			}
@@ -316,12 +319,11 @@ class AutogenSettingTab extends PluginSettingTab {
 		const link = document.createElement("a");
 		link.href = "https://platform.openai.com/api-keys";
 		link.textContent = "here";
-		link.target = "_blank"; // Optional: Opens the link in a new tab
+		link.target = "_blank";
 
-		// Append the text and link to the DocumentFragment
 		apiKeyDesc.appendChild(span);
 		apiKeyDesc.appendChild(link);
-		apiKeyDesc.appendChild(document.createTextNode(")")); // To add the closing parenthesis
+		apiKeyDesc.appendChild(document.createTextNode(")."));
 
 		new Setting(containerEl)
 			.setName("OpenAI API key")
@@ -337,21 +339,8 @@ class AutogenSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
-			.setName("Custom URL")
-			.setDesc("Set a custom URL (e.g. for proxy or local models with OpenAI-compatible API)")
-			.addText((text) =>
-				text
-					.setPlaceholder("Custom URL (leave blank for OpenAI default)")
-					.setValue(this.plugin.settings.customURL)
-					.onChange(async (value) => {
-						this.plugin.settings.customURL = value;
-						await this.plugin.saveSettings();
-					})
-			);
-
-		new Setting(containerEl)
 			.setName("Model")
-			.setDesc("The model to use for generating text")
+			.setDesc("The model to use for generating text.")
 			.addDropdown((dropdown) => {
 				dropdown
 					.addOption("gpt-3.5-turbo", "GPT-3.5 Turbo")
@@ -384,11 +373,36 @@ class AutogenSettingTab extends PluginSettingTab {
 						this.plugin.settings.model = value;
 						await this.plugin.saveSettings();
 					});
+
+				dropdown
+					.addOption("custom", "Custom")
+					.setValue(this.plugin.settings.model)
+					.onChange(async (value) => {
+						this.plugin.settings.model = value;
+						await this.plugin.saveSettings();
+					});
 			});
 
 		new Setting(containerEl)
+			.setName("Custom URL")
+			.setDesc(
+				"Set a custom URL (e.g. for proxy or local models with OpenAI-compatible API). Leave blank for OpenAI default."
+			)
+			.addText((text) =>
+				text
+					.setPlaceholder(
+						"Custom URL (leave blank for OpenAI default)"
+					)
+					.setValue(this.plugin.settings.customURL)
+					.onChange(async (value) => {
+						this.plugin.settings.customURL = value;
+						await this.plugin.saveSettings();
+					})
+			);
+
+		new Setting(containerEl)
 			.setName("Trigger regex")
-			.setDesc("The regex pattern to trigger the autogen")
+			.setDesc("The regex pattern to trigger the autogen.")
 			.addText((text) =>
 				text
 					.setPlaceholder("Enter the regex pattern")
@@ -416,7 +430,9 @@ class AutogenSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("System prompt")
-			.setDesc("The prompt to send to the OpenAI API")
+			.setDesc(
+				"The system prompt to be used by the chosen model, sent to the API."
+			)
 			.addTextArea((text) => {
 				text.setPlaceholder("Enter the system prompt")
 					.setValue(this.plugin.settings.systemPrompt)
