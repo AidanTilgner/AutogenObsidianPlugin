@@ -1,9 +1,10 @@
 import OpenAI from "openai";
 import { ChatCompletionCreateParamsBase } from "openai/resources/chat/completions";
 
-export const getClient = (apiKey: string) => {
+export const getClient = (apiKey: string, customURL?: string) => {
 	return new OpenAI({
 		apiKey,
+		customURL,
 		dangerouslyAllowBrowser: true,
 	});
 };
