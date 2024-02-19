@@ -60,15 +60,13 @@ export default class Autogen extends Plugin {
 	}
 
 	initOpenAIClient() {
-		if (this.settings.openaiApiKey) {
-			if (this.settings.customURL) {
-				this.openaiClient = getClient(
-					this.settings.openaiApiKey,
-					this.settings.customURL
-				);
-			} else {
-				this.openaiClient = getClient(this.settings.openaiApiKey);
-			}
+		if (this.settings.openaiApiKey && !this.settings.customURL) {
+			this.openaiClient = getClient(this.settings.openaiApiKey);
+		} else if (this.settings.customURL) {
+			this.openaiClient = getClient(
+				this.settings.openaiApiKey,
+				this.settings.customURL
+			);
 		}
 	}
 
