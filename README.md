@@ -4,6 +4,8 @@ The Autogen plugin allows you to create in-place generations within notes, using
 # Settings
 Define your API key in the plugin settings, as well as the model to use for text generation. The `gpt-3.5-turbo` plugin is the default, due to it's low cost and very fast completions. However for more accuracy at slightly slower inference speed I'd recommend GPT-4. 32k variants of each model are also available, and allow for much larger token sizes. To learn more about tokens and specifics I'd recommend reading [OpenAI's forum](https://help.openai.com/en/articles/4936856-what-are-tokens-and-how-to-count-them) on the subject. You can also change the `Trigger Regex`, which will decide what text should be looked for and matched as a selection to be replaced.
 
+If you need a proxy or have a local LLM setup with an OpenAI-compatible API (examples include LocalAI, Ollama, LM Studio), you can set the Custom URL. Just leave it blank to access the OpenAI model of your choice (directly, without proxy).
+
 You can also modify the `Window Size`, which is different but correlated with the token limit of the selected model. The `Window Size` setting defines how many characters, not including the trigger prompt (this: @[prompt is here]), should be sent to the model. This likely won't matter for most notes, however for longer notes it's important to make sure that too many tokens aren't being sent, as this may cause errors. This setting defaults to 8k which will send _about_ 2k tokens per generation, from above and below the text. This should be enough for basic context to be sent to the model, but can be increased to about 16k on the smaller models and about 128k on the larger ones.
 
 > [!warning]
